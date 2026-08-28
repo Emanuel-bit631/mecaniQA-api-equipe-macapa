@@ -1,0 +1,259 @@
+{
+    "info": {
+        "_postman_id": "mecaniqa-api-collection-v1",
+        "name": "MecaniQA - Avaliação Final (Postman Collection)",
+        "description": "Collection de testes completa com as 8 User Stories configuradas para a avaliação final da API MecâniQA.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Gestão de Peças",
+            "item": [
+                {
+                    "name": "US01 - Cadastrar Nova Peça",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"codigoBarras\": \"7891234567890\",\n  \"fornecedorMarca\": \"Bosch\",\n  \"quantidadeEstoque\": 10,\n  \"precoCusto\": 50.0,\n  \"precoVenda\": 100.0,\n  \"categoria\": \"MOTOR\",\n  \"tamanho\": \"Médio\",\n  \"cor\": \"Preto\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/pecas",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "pecas"
+                            ]
+                        },
+                        "description": "US01: Cadastro de nova Peça informando todos os dados e categoria."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "US02 - Listar Todas as Peças",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/pecas",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "pecas"
+                            ]
+                        },
+                        "description": "US02: Listar todas as Peças cadastradas no catálogo."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "US02 - Buscar Peça por ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/pecas/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "pecas",
+                                "1"
+                            ]
+                        },
+                        "description": "US02: Buscar uma peça específica pelo seu código/ID único."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "US03 - Atualizar Peça do Catálogo",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"codigoBarras\": \"7891234567890\",\n  \"fornecedorMarca\": \"Bosch Premium\",\n  \"quantidadeEstoque\": 15,\n  \"precoCusto\": 55.0,\n  \"precoVenda\": 120.0,\n  \"categoria\": \"MOTOR\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/pecas/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "pecas",
+                                "1"
+                            ]
+                        },
+                        "description": "US03: Atualizar preços e quantidade de estoque de uma peça existente."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "US04 - Excluir Peça do Catálogo",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/pecas/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "pecas",
+                                "1"
+                            ]
+                        },
+                        "description": "US04: Excluir o registro de uma peça obsoleta."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Gestão de Serviços",
+            "item": [
+                {
+                    "name": "US05 - Cadastrar Novo Serviço",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"nome\": \"Troca de Óleo e Filtro\",\n  \"tempoEstimadoMinutos\": 40,\n  \"custoTabelado\": 150.0\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/servicos",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "servicos"
+                            ]
+                        },
+                        "description": "US05: Cadastro de novo Serviço informando nome, tempo estimado e custo."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "US06 - Listar Todos os Serviços",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/servicos",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "servicos"
+                            ]
+                        },
+                        "description": "US06: Listar catálogo completo de Serviços disponíveis."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "US06 - Buscar Serviço por ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/servicos/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "servicos",
+                                "1"
+                            ]
+                        },
+                        "description": "US06: Buscar um serviço específico pelo seu ID."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "US07 - Atualizar Serviço do Catálogo",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"nome\": \"Troca de Óleo Sintético Completa\",\n  \"tempoEstimadoMinutos\": 45,\n  \"custoTabelado\": 180.0\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/servicos/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "servicos",
+                                "1"
+                            ]
+                        },
+                        "description": "US07: Alterar tempo estimado e custo tabelado de um serviço cadastrado."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "US08 - Excluir Serviço do Catálogo",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/servicos/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "servicos",
+                                "1"
+                            ]
+                        },
+                        "description": "US08: Remover um serviço do catálogo."
+                    },
+                    "response": []
+                }
+            ]
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8080",
+            "type": "string"
+        }
+    ]
+}
