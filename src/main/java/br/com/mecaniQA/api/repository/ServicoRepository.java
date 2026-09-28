@@ -44,7 +44,7 @@ public class ServicoRepository {
     public Optional<Servico> buscarPorId(Long id) {
         if (id == null) return Optional.empty();
         return servicos.stream()
-                .filter(s -> s.getId() == id)
+                .filter(s -> id.equals(s.getId()))
                 .findFirst();
     }
 
@@ -76,6 +76,6 @@ public class ServicoRepository {
 
     public boolean deletar(Long id) {
         if (id == null) return false;
-        return servicos.removeIf(s -> s.getId() == id);
+        return servicos.removeIf(s -> id.equals(s.getId()));
     }
 }

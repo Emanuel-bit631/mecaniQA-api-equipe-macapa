@@ -64,4 +64,20 @@ public class PedidoPecas {
         }
         return total;
     }
+
+    public void adicionarItem(ItemPedido item) {
+        if (this.itens == null) {
+            this.itens = new ArrayList<>();
+        }
+        if (item != null) {
+            this.itens.add(item);
+        }
+    }
+
+    public void adicionarItens(List<ItemPedido> novosItens) {
+        if (this.itens == null) {
+            this.itens = new ArrayList<>();
+        }
+            this.itens.addAll(novosItens);
+    }
 }

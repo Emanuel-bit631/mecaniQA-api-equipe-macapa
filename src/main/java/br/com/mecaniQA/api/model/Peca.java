@@ -117,7 +117,7 @@ public class Peca {
         return codigoBarras != null && !codigoBarras.trim().isEmpty() &&
                 fornecedorMarca != null && !fornecedorMarca.trim().isEmpty() &&
                 quantidadeEstoque != null && quantidadeEstoque >= 0 &&
-                precoCusto > 0 &&
-                precoVenda > 0;
+                precoCusto != null && precoCusto > 0 &&
+                precoVenda != null && precoVenda > 0;
     }
 }

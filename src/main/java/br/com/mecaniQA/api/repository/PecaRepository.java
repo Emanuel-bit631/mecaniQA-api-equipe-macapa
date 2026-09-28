@@ -28,7 +28,7 @@ public class PecaRepository {
     public Optional<Peca> buscarPorId(Long id) {
         if (id == null) return Optional.empty();
         return pecas.stream()
-                .filter(p -> p.getId() == id)
+                .filter(p -> id.equals(p.getId()))
                 .findFirst();
     }
 
@@ -51,7 +51,7 @@ public class PecaRepository {
 
     public boolean deletar(Long id) {
         if (id == null) return false;
-        return pecas.removeIf(p -> p.getId() == id);
+        return pecas.removeIf(p -> id.equals(p.getId()));
     }
 
     public Optional<Peca> buscarPorCodigoBarras(String codigoBarras) {

@@ -72,6 +72,6 @@ public class Servico {
     public boolean isValido() {
         return nome != null && !nome.trim().isEmpty() &&
                 tempoEstimadoMinutos != null && tempoEstimadoMinutos > 0 &&
-                custoTabelado > 0;
+                custoTabelado != null && custoTabelado > 0;
     }
 }
