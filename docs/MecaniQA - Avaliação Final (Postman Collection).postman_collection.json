@@ -5,7 +5,7 @@
     "name": "MecaniQA - Avaliação Final (Postman Collection)",
     "description": "Collection de testes completa com as 8 User Stories configuradas para a avaliação final da API MecâniQA.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": 48088728,
+    "_exporter_id": "48088728",
     "_collection_link": "https://go.postman.co/collection/48088728-0e65e50d-5ade-4088-b820-05cf9d5af4a6?source=collection_link"
   },
   "item": [
