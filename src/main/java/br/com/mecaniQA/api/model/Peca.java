@@ -1,3 +1,4 @@
+
 package br.com.mecaniQA.api.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -5,6 +6,7 @@ import java.time.LocalDateTime;
 
 public class Peca {
     private Long id;
+    private String nome;
     private String codigoBarras;
     private String fornecedorMarca;
     private Integer quantidadeEstoque;
@@ -39,13 +41,23 @@ public class Peca {
     public Long getId() {
         return id;
     }
+
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
     }
 
     public String getCodigoBarras() {
         return codigoBarras;
     }
+
     public void setCodigoBarras(String codigoBarras) {
         this.codigoBarras = codigoBarras;
     }
@@ -53,6 +65,7 @@ public class Peca {
     public String getFornecedorMarca() {
         return fornecedorMarca;
     }
+
     public void setFornecedorMarca(String fornecedorMarca) {
         this.fornecedorMarca = fornecedorMarca;
     }
@@ -60,6 +73,7 @@ public class Peca {
     public Integer getQuantidadeEstoque() {
         return quantidadeEstoque;
     }
+
     public void setQuantidadeEstoque(Integer quantidadeEstoque) {
         this.quantidadeEstoque = quantidadeEstoque;
     }
@@ -67,6 +81,7 @@ public class Peca {
     public Double getPrecoCusto() {
         return precoCusto;
     }
+
     public void setPrecoCusto(Double precoCusto) {
         this.precoCusto = precoCusto;
     }
@@ -74,6 +89,7 @@ public class Peca {
     public Double getPrecoVenda() {
         return precoVenda;
     }
+
     public void setPrecoVenda(Double precoVenda) {
         this.precoVenda = precoVenda;
     }
@@ -81,6 +97,7 @@ public class Peca {
     public LocalDateTime getDataCadastro() {
         return dataCadastro;
     }
+
     public void setDataCadastro(LocalDateTime dataCadastro) {
         this.dataCadastro = dataCadastro;
     }
@@ -88,6 +105,7 @@ public class Peca {
     public LocalDateTime getDataUltimaAtualizacao() {
         return dataUltimaAtualizacao;
     }
+
     public void setDataUltimaAtualizacao(LocalDateTime dataUltimaAtualizacao) {
         this.dataUltimaAtualizacao = dataUltimaAtualizacao;
     }
@@ -95,6 +113,7 @@ public class Peca {
     public CategoriaPeca getCategoria() {
         return categoria;
     }
+
     public void setCategoria(CategoriaPeca categoria) {
         this.categoria = categoria;
     }
@@ -102,6 +121,7 @@ public class Peca {
     public String getTamanho() {
         return tamanho;
     }
+
     public void setTamanho(String tamanho) {
         this.tamanho = tamanho;
     }
@@ -109,6 +129,7 @@ public class Peca {
     public String getCor() {
         return cor;
     }
+
     public void setCor(String cor) {
         this.cor = cor;
     }
