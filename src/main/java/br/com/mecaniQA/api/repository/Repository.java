@@ -1,3 +1,4 @@
+package br.com.mecaniQA.api.repository;
 import java.util.List;
 import java.util.Optional;
 
