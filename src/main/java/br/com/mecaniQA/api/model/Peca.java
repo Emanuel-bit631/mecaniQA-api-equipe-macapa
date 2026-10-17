@@ -135,7 +135,8 @@ public class Peca {
     }
 
     public boolean isValida() {
-        return codigoBarras != null && !codigoBarras.trim().isEmpty() &&
+        return nome != null && !nome.trim().isEmpty() &&
+                codigoBarras != null && !codigoBarras.trim().isEmpty() &&
                 fornecedorMarca != null && !fornecedorMarca.trim().isEmpty() &&
                 quantidadeEstoque != null && quantidadeEstoque >= 0 &&
                 precoCusto != null && precoCusto > 0 &&
