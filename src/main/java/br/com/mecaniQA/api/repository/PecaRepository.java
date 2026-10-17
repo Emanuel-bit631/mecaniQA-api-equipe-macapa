@@ -1,3 +1,4 @@
+
 package br.com.mecaniQA.api.repository;
 
 import br.com.mecaniQA.api.model.Peca;
@@ -67,6 +68,7 @@ public class PecaRepository {
         if (id == null || pecaAtualizada == null) {
             return false;
         }
+
         Optional<Peca> pecaExistenteOpt = buscarPorId(id);
         if (pecaExistenteOpt.isEmpty()) {
             return false;
@@ -74,27 +76,38 @@ public class PecaRepository {
 
         Peca pecaExistente = pecaExistenteOpt.get();
 
-        if (pecaAtualizada.getPrecoCusto() > 0) {
+        if (pecaAtualizada.getNome() != null && !pecaAtualizada.getNome().trim().isEmpty()) {
+            pecaExistente.setNome(pecaAtualizada.getNome());
+        }
+
+        if (pecaAtualizada.getPrecoCusto() != null && pecaAtualizada.getPrecoCusto() > 0) {
             pecaExistente.setPrecoCusto(pecaAtualizada.getPrecoCusto());
         }
-        if (pecaAtualizada.getPrecoVenda() > 0) {
+
+        if (pecaAtualizada.getPrecoVenda() != null && pecaAtualizada.getPrecoVenda() > 0) {
             pecaExistente.setPrecoVenda(pecaAtualizada.getPrecoVenda());
         }
+
         if (pecaAtualizada.getQuantidadeEstoque() != null && pecaAtualizada.getQuantidadeEstoque() >= 0) {
             pecaExistente.setQuantidadeEstoque(pecaAtualizada.getQuantidadeEstoque());
         }
+
         if (pecaAtualizada.getCodigoBarras() != null && !pecaAtualizada.getCodigoBarras().trim().isEmpty()) {
             pecaExistente.setCodigoBarras(pecaAtualizada.getCodigoBarras());
         }
+
         if (pecaAtualizada.getFornecedorMarca() != null && !pecaAtualizada.getFornecedorMarca().trim().isEmpty()) {
             pecaExistente.setFornecedorMarca(pecaAtualizada.getFornecedorMarca());
         }
+
         if (pecaAtualizada.getCategoria() != null) {
             pecaExistente.setCategoria(pecaAtualizada.getCategoria());
         }
+
         if (pecaAtualizada.getTamanho() != null) {
             pecaExistente.setTamanho(pecaAtualizada.getTamanho());
         }
+
         if (pecaAtualizada.getCor() != null) {
             pecaExistente.setCor(pecaAtualizada.getCor());
         }
