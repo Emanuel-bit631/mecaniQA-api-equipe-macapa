@@ -208,8 +208,6 @@ public class PecaRepository implements Repository<Peca, Long> {
         }
     }
 
-    // Compatibilidade com os Controllers e Mappers atuais
-
     public List<Peca> getPecas() {
         return findAll();
     }
