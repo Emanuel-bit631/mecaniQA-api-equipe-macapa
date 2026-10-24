@@ -1,3 +1,4 @@
+
 package br.com.mecaniQA.api.model;
 
 import java.util.List;
@@ -6,6 +7,7 @@ import java.util.ArrayList;
 
 public class PedidoPecas {
     private Long id;
+    private Long ordemServicoId;
     private LocalDateTime dataPedido;
     private StatusPedido status;
     private List<ItemPedido> itens;
@@ -31,11 +33,19 @@ public class PedidoPecas {
         this.id = id;
     }
 
+    public Long getOrdemServicoId(){
+        return ordemServicoId;
+    }
+
+    public void setOrdemServicoId(Long ordemServicoId){
+        this.ordemServicoId = ordemServicoId;
+    }
+
     public LocalDateTime getDataPedido(){
         return dataPedido;
     }
 
-    public void setDataPedido( LocalDateTime dataPedido){
+    public void setDataPedido(LocalDateTime dataPedido){
         this.dataPedido = dataPedido;
     }
 
@@ -78,6 +88,6 @@ public class PedidoPecas {
         if (this.itens == null) {
             this.itens = new ArrayList<>();
         }
-            this.itens.addAll(novosItens);
+        this.itens.addAll(novosItens);
     }
 }

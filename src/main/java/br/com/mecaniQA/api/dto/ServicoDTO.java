@@ -1,4 +1,7 @@
 package br.com.mecaniQA.api.dto;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import java.time.LocalDateTime;
 
 public class ServicoDTO {
     private Long id;
@@ -43,8 +46,42 @@ public class ServicoDTO {
     public Double getCustoTabelado(){
         return custoTabelado;
     }
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private LocalDateTime dataCriacao;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private LocalDateTime dataUltimaAtualizacao;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Boolean valido;
 
     public void setCustoTabelado(Double custoTabelado){
         this.custoTabelado = custoTabelado;
+    }
+    public LocalDateTime getDataCriacao() {
+        return dataCriacao;
+    }
+
+    public void setDataCriacao(LocalDateTime dataCriacao) {
+        this.dataCriacao = dataCriacao;
+    }
+
+    public LocalDateTime getDataUltimaAtualizacao() {
+        return dataUltimaAtualizacao;
+    }
+
+    public void setDataUltimaAtualizacao(
+            LocalDateTime dataUltimaAtualizacao) {
+        this.dataUltimaAtualizacao = dataUltimaAtualizacao;
+    }
+
+    public Boolean getValido() {
+        return valido;
+    }
+
+    public void setValido(Boolean valido) {
+        this.valido = valido;
     }
 }
