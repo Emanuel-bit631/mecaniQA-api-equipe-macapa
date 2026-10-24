@@ -1,17 +1,27 @@
+
 package br.com.mecaniQA.api.repository;
 
+import br.com.mecaniQA.api.config.ConexaoBanco;
+import br.com.mecaniQA.api.mapper.ServicoMapper;
 import br.com.mecaniQA.api.model.Servico;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class ServicoRepository {
-    private static ServicoRepository instance;
-    private final List<Servico> servicos = new ArrayList<>();
-    private long proximoId = 1;
+public class ServicoRepository implements Repository<Servico, Long> {
 
-    private ServicoRepository() {}
+    private static ServicoRepository instance;
+
+    private ServicoRepository() {
+    }
 
     public static synchronized ServicoRepository getInstance() {
         if (instance == null) {
@@ -20,62 +30,227 @@ public class ServicoRepository {
         return instance;
     }
 
-    public List<Servico> getServicos() {
-        return servicos;
+    @Override
+    public Servico save(Servico servico) {
+        if (servico == null || !servico.isValido()
+                || (servico.getId() != null && servico.getId() != 0)) {
+            throw new IllegalArgumentException("Dados inválidos para cadastrar serviço.");
+        }
+
+        String sql = "INSERT INTO servicos "
+                + "(nome, tempo_estimado_minutos, custo_tabelado, "
+                + "data_criacao, data_ultima_atualizacao) VALUES (?, ?, ?, ?, ?)";
+
+        LocalDateTime agora = LocalDateTime.now();
+
+        try (Connection conexao = ConexaoBanco.conectar();
+             PreparedStatement stmt = conexao.prepareStatement(
+                     sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            stmt.setString(1, servico.getNome());
+            stmt.setInt(2, servico.getTempoEstimadoMinutos());
+            stmt.setDouble(3, servico.getCustoTabelado());
+            stmt.setTimestamp(4, Timestamp.valueOf(agora));
+            stmt.setTimestamp(5, Timestamp.valueOf(agora));
+
+            stmt.executeUpdate();
+
+            try (ResultSet chaves = stmt.getGeneratedKeys()) {
+                if (!chaves.next()) {
+                    throw new SQLException("MySQL não retornou o ID do serviço.");
+                }
+                servico.setId(chaves.getLong(1));
+            }
+
+            servico.setDataCriacao(agora);
+            servico.setDataUltimaAtualizacao(agora);
+            return servico;
+
+        } catch (SQLException e) {
+            throw new IllegalStateException("Erro ao cadastrar serviço no MySQL.", e);
+        }
     }
 
-    public synchronized boolean salvar(Servico servico) {
-        if (servico == null || !servico.isValido()) {
+    @Override
+    public Optional<Servico> findById(Long id) {
+        if (id == null) {
+            return Optional.empty();
+        }
+
+        String sql = "SELECT * FROM servicos WHERE id = ?";
+
+        try (Connection conexao = ConexaoBanco.conectar();
+             PreparedStatement stmt = conexao.prepareStatement(sql)) {
+
+            stmt.setLong(1, id);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(ServicoMapper.fromResultSet(rs));
+                }
+                return Optional.empty();
+            }
+
+        } catch (SQLException e) {
+            throw new IllegalStateException("Erro ao buscar serviço no MySQL.", e);
+        }
+    }
+
+    @Override
+    public List<Servico> findAll() {
+        List<Servico> servicos = new ArrayList<>();
+        String sql = "SELECT * FROM servicos ORDER BY id";
+
+        try (Connection conexao = ConexaoBanco.conectar();
+             PreparedStatement stmt = conexao.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                servicos.add(ServicoMapper.fromResultSet(rs));
+            }
+
+            return servicos;
+
+        } catch (SQLException e) {
+            throw new IllegalStateException("Erro ao listar serviços no MySQL.", e);
+        }
+    }
+
+    @Override
+    public Servico update(Servico servico) {
+        if (servico == null || servico.getId() == null
+                || !servico.isValido()) {
+            throw new IllegalArgumentException("Dados inválidos para atualizar serviço.");
+        }
+
+        String sql = "UPDATE servicos SET nome = ?, tempo_estimado_minutos = ?, "
+                + "custo_tabelado = ?, data_ultima_atualizacao = ? WHERE id = ?";
+
+        LocalDateTime agora = LocalDateTime.now();
+
+        try (Connection conexao = ConexaoBanco.conectar();
+             PreparedStatement stmt = conexao.prepareStatement(sql)) {
+
+            stmt.setString(1, servico.getNome());
+            stmt.setInt(2, servico.getTempoEstimadoMinutos());
+            stmt.setDouble(3, servico.getCustoTabelado());
+            stmt.setTimestamp(4, Timestamp.valueOf(agora));
+            stmt.setLong(5, servico.getId());
+
+            int alterados = stmt.executeUpdate();
+
+            if (alterados == 0 && !existsById(servico.getId())) {
+                throw new IllegalArgumentException(
+                        "Serviço não encontrado: " + servico.getId());
+            }
+
+            servico.setDataUltimaAtualizacao(agora);
+            return servico;
+
+        } catch (SQLException e) {
+            throw new IllegalStateException("Erro ao atualizar serviço no MySQL.", e);
+        }
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        excluir(id);
+    }
+
+    @Override
+    public boolean existsById(Long id) {
+        if (id == null) {
             return false;
         }
 
-        if (servico.getId() != null && servico.getId() != 0) {
+        String sql = "SELECT 1 FROM servicos WHERE id = ?";
+
+        try (Connection conexao = ConexaoBanco.conectar();
+             PreparedStatement stmt = conexao.prepareStatement(sql)) {
+
+            stmt.setLong(1, id);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+
+        } catch (SQLException e) {
+            throw new IllegalStateException("Erro ao verificar serviço no MySQL.", e);
+        }
+    }
+
+    private int excluir(Long id) {
+        if (id == null) {
+            return 0;
+        }
+
+        String sql = "DELETE FROM servicos WHERE id = ?";
+
+        try (Connection conexao = ConexaoBanco.conectar();
+             PreparedStatement stmt = conexao.prepareStatement(sql)) {
+
+            stmt.setLong(1, id);
+            return stmt.executeUpdate();
+
+        } catch (SQLException e) {
+            throw new IllegalStateException("Erro ao excluir serviço no MySQL.", e);
+        }
+    }
+
+    // Métodos mantidos para compatibilidade com o código existente.
+
+    public List<Servico> getServicos() {
+        return findAll();
+    }
+
+    public boolean salvar(Servico servico) {
+        if (servico == null || !servico.isValido()
+                || (servico.getId() != null && servico.getId() != 0)) {
             return false;
         }
 
-        servico.setId(proximoId++);
-        servico.setDataCriacao(LocalDateTime.now());
-        servico.setDataUltimaAtualizacao(LocalDateTime.now());
-
-        this.servicos.add(servico);
+        save(servico);
         return true;
     }
 
     public Optional<Servico> buscarPorId(Long id) {
-        if (id == null) return Optional.empty();
-        return servicos.stream()
-                .filter(s -> id.equals(s.getId()))
-                .findFirst();
+        return findById(id);
     }
 
-    public synchronized boolean atualizar(Long id, Servico servicoAtualizado) {
-        if (id == null || servicoAtualizado == null) {
+    public boolean atualizar(Long id, Servico atualizado) {
+        if (id == null || atualizado == null) {
             return false;
         }
 
-        Optional<Servico> servicoExistenteOpt = buscarPorId(id);
-        if (servicoExistenteOpt.isEmpty()) {
+        Optional<Servico> existenteOpt = findById(id);
+
+        if (existenteOpt.isEmpty()) {
             return false;
         }
 
-        Servico servicoExistente = servicoExistenteOpt.get();
+        Servico existente = existenteOpt.get();
 
-        if (servicoAtualizado.getNome() != null && !servicoAtualizado.getNome().trim().isEmpty()) {
-            servicoExistente.setNome(servicoAtualizado.getNome());
-        }
-        if (servicoAtualizado.getTempoEstimadoMinutos() != null && servicoAtualizado.getTempoEstimadoMinutos() > 0) {
-            servicoExistente.setTempoEstimadoMinutos(servicoAtualizado.getTempoEstimadoMinutos());
-        }
-        if (servicoAtualizado.getCustoTabelado() > 0) {
-            servicoExistente.setCustoTabelado(servicoAtualizado.getCustoTabelado());
+        if (atualizado.getNome() != null
+                && !atualizado.getNome().trim().isEmpty()) {
+            existente.setNome(atualizado.getNome());
         }
 
-        servicoExistente.setDataUltimaAtualizacao(LocalDateTime.now());
+        if (atualizado.getTempoEstimadoMinutos() != null
+                && atualizado.getTempoEstimadoMinutos() > 0) {
+            existente.setTempoEstimadoMinutos(
+                    atualizado.getTempoEstimadoMinutos());
+        }
+
+        if (atualizado.getCustoTabelado() != null
+                && atualizado.getCustoTabelado() > 0) {
+            existente.setCustoTabelado(atualizado.getCustoTabelado());
+        }
+
+        update(existente);
         return true;
     }
 
     public boolean deletar(Long id) {
-        if (id == null) return false;
-        return servicos.removeIf(s -> id.equals(s.getId()));
+        return excluir(id) > 0;
     }
 }
