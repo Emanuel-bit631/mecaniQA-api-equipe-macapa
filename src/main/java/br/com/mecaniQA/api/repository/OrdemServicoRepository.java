@@ -1,6 +1,5 @@
 package br.com.mecaniQA.api.repository;
 
-import br.com.mecaniQA.api.config.ConexaoBanco;
 import br.com.mecaniQA.api.mapper.PecaMapper;
 import br.com.mecaniQA.api.mapper.ServicoMapper;
 import br.com.mecaniQA.api.model.ItemPedido;
@@ -13,14 +12,13 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
 public class OrdemServicoRepository
-        implements Repository<OrdemServico, Long> {
+        extends AbstractJdbcRepository<OrdemServico, Long> {
 
     private static OrdemServicoRepository instance;
 
@@ -35,52 +33,53 @@ public class OrdemServicoRepository
     }
 
     @Override
+    protected RuntimeException criarExcecaoBanco(
+            String mensagem, SQLException causa) {
+        return new IllegalStateException(mensagem, causa);
+    }
+
+    @Override
     public OrdemServico save(OrdemServico os) {
         validar(os, false);
 
         String sql = "INSERT INTO ordens_servico "
                 + "(cliente, veiculo, status) VALUES (?, ?, ?)";
 
-        try (Connection conexao = ConexaoBanco.conectar()) {
-            conexao.setAutoCommit(false);
+        return executarComConexao(
+                "Erro ao cadastrar ordem de serviço no MySQL.",
+                conexao -> {
+                    conexao.setAutoCommit(false);
 
-            try {
-                try (PreparedStatement stmt = conexao.prepareStatement(
-                        sql, Statement.RETURN_GENERATED_KEYS)) {
+                    try {
+                        try (PreparedStatement stmt =
+                                     prepararStatement(conexao, sql, true)) {
+                            stmt.setString(1, os.getCliente());
+                            stmt.setString(2, os.getVeiculo());
+                            stmt.setString(3, os.getStatus().name());
+                            stmt.executeUpdate();
 
-                    stmt.setString(1, os.getCliente());
-                    stmt.setString(2, os.getVeiculo());
-                    stmt.setString(3, os.getStatus().name());
-
-                    stmt.executeUpdate();
-
-                    try (ResultSet chaves = stmt.getGeneratedKeys()) {
-                        if (!chaves.next()) {
-                            throw new SQLException(
-                                    "MySQL não retornou o ID da ordem de serviço.");
+                            try (ResultSet chaves = stmt.getGeneratedKeys()) {
+                                if (!chaves.next()) {
+                                    throw new SQLException(
+                                            "MySQL não retornou o ID da ordem de serviço.");
+                                }
+                                os.setId(chaves.getLong(1));
+                            }
                         }
 
-                        os.setId(chaves.getLong(1));
+                        salvarRelacionamentos(conexao, os);
+                        conexao.commit();
+                        return os;
+
+                    } catch (SQLException e) {
+                        rollback(conexao);
+                        throw e;
+                    } catch (RuntimeException e) {
+                        rollback(conexao);
+                        throw e;
                     }
                 }
-
-                salvarRelacionamentos(conexao, os);
-                conexao.commit();
-
-                return os;
-
-            } catch (SQLException e) {
-                rollback(conexao);
-                throw e;
-            } catch (RuntimeException e) {
-                rollback(conexao);
-                throw e;
-            }
-
-        } catch (SQLException e) {
-            throw new IllegalStateException(
-                    "Erro ao cadastrar ordem de serviço no MySQL.", e);
-        }
+        );
     }
 
     @Override
@@ -91,55 +90,53 @@ public class OrdemServicoRepository
 
         String sql = "SELECT * FROM ordens_servico WHERE id = ?";
 
-        try (Connection conexao = ConexaoBanco.conectar();
-             PreparedStatement stmt = conexao.prepareStatement(sql)) {
+        return executarComConexao(
+                "Erro ao buscar ordem de serviço no MySQL.",
+                conexao -> {
+                    OrdemServico os;
 
-            stmt.setLong(1, id);
+                    try (PreparedStatement stmt =
+                                 prepararStatement(conexao, sql, false)) {
+                        stmt.setLong(1, id);
 
-            OrdemServico os;
+                        try (ResultSet rs = stmt.executeQuery()) {
+                            if (!rs.next()) {
+                                return Optional.empty();
+                            }
+                            os = mapearOrdem(rs);
+                        }
+                    }
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (!rs.next()) {
-                    return Optional.empty();
+                    carregarRelacionamentos(conexao, os);
+                    return Optional.of(os);
                 }
-
-                os = mapearOrdem(rs);
-            }
-
-            carregarRelacionamentos(conexao, os);
-
-            return Optional.of(os);
-
-        } catch (SQLException e) {
-            throw new IllegalStateException(
-                    "Erro ao buscar ordem de serviço no MySQL.", e);
-        }
+        );
     }
 
     @Override
     public List<OrdemServico> findAll() {
-        List<OrdemServico> ordens = new ArrayList<>();
-
         String sql = "SELECT * FROM ordens_servico ORDER BY id";
 
-        try (Connection conexao = ConexaoBanco.conectar();
-             PreparedStatement stmt = conexao.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+        return executarComConexao(
+                "Erro ao listar ordens de serviço no MySQL.",
+                conexao -> {
+                    List<OrdemServico> ordens = new ArrayList<>();
 
-            while (rs.next()) {
-                ordens.add(mapearOrdem(rs));
-            }
+                    try (PreparedStatement stmt =
+                                 prepararStatement(conexao, sql, false);
+                         ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            ordens.add(mapearOrdem(rs));
+                        }
+                    }
 
-            for (OrdemServico os : ordens) {
-                carregarRelacionamentos(conexao, os);
-            }
+                    for (OrdemServico os : ordens) {
+                        carregarRelacionamentos(conexao, os);
+                    }
 
-            return ordens;
-
-        } catch (SQLException e) {
-            throw new IllegalStateException(
-                    "Erro ao listar ordens de serviço no MySQL.", e);
-        }
+                    return ordens;
+                }
+        );
     }
 
     @Override
@@ -147,46 +144,45 @@ public class OrdemServicoRepository
         validar(os, true);
 
         String sql = "UPDATE ordens_servico "
-                + "SET cliente = ?, veiculo = ?, status = ? "
-                + "WHERE id = ?";
+                + "SET cliente = ?, veiculo = ?, status = ? WHERE id = ?";
 
-        try (Connection conexao = ConexaoBanco.conectar()) {
-            conexao.setAutoCommit(false);
+        return executarComConexao(
+                "Erro ao atualizar ordem de serviço no MySQL.",
+                conexao -> {
+                    conexao.setAutoCommit(false);
 
-            try {
-                try (PreparedStatement stmt = conexao.prepareStatement(sql)) {
-                    stmt.setString(1, os.getCliente());
-                    stmt.setString(2, os.getVeiculo());
-                    stmt.setString(3, os.getStatus().name());
-                    stmt.setLong(4, os.getId());
+                    try {
+                        try (PreparedStatement stmt =
+                                     prepararStatement(conexao, sql, false)) {
+                            stmt.setString(1, os.getCliente());
+                            stmt.setString(2, os.getVeiculo());
+                            stmt.setString(3, os.getStatus().name());
+                            stmt.setLong(4, os.getId());
 
-                    int alterados = stmt.executeUpdate();
+                            int alterados = stmt.executeUpdate();
 
-                    if (alterados == 0 && !existePorId(conexao, os.getId())) {
-                        throw new NoSuchElementException(
-                                "Ordem de serviço não encontrada: " + os.getId());
+                            if (alterados == 0
+                                    && !existePorId(conexao, os.getId())) {
+                                throw new NoSuchElementException(
+                                        "Ordem de serviço não encontrada: "
+                                                + os.getId());
+                            }
+                        }
+
+                        limparRelacionamentos(conexao, os.getId());
+                        salvarRelacionamentos(conexao, os);
+                        conexao.commit();
+                        return os;
+
+                    } catch (SQLException e) {
+                        rollback(conexao);
+                        throw e;
+                    } catch (RuntimeException e) {
+                        rollback(conexao);
+                        throw e;
                     }
                 }
-
-                limparRelacionamentos(conexao, os.getId());
-                salvarRelacionamentos(conexao, os);
-
-                conexao.commit();
-
-                return os;
-
-            } catch (SQLException e) {
-                rollback(conexao);
-                throw e;
-            } catch (RuntimeException e) {
-                rollback(conexao);
-                throw e;
-            }
-
-        } catch (SQLException e) {
-            throw new IllegalStateException(
-                    "Erro ao atualizar ordem de serviço no MySQL.", e);
-        }
+        );
     }
 
     @Override
@@ -200,21 +196,17 @@ public class OrdemServicoRepository
             return false;
         }
 
-        try (Connection conexao = ConexaoBanco.conectar()) {
-            return existePorId(conexao, id);
-
-        } catch (SQLException e) {
-            throw new IllegalStateException(
-                    "Erro ao verificar ordem de serviço no MySQL.", e);
-        }
+        return executarComConexao(
+                "Erro ao verificar ordem de serviço no MySQL.",
+                conexao -> existePorId(conexao, id)
+        );
     }
 
     private boolean existePorId(Connection conexao, Long id)
             throws SQLException {
-
         String sql = "SELECT 1 FROM ordens_servico WHERE id = ?";
 
-        try (PreparedStatement stmt = conexao.prepareStatement(sql)) {
+        try (PreparedStatement stmt = prepararStatement(conexao, sql, false)) {
             stmt.setLong(1, id);
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -248,7 +240,7 @@ public class OrdemServicoRepository
                         + "ORDER BY oss.id";
 
         try (PreparedStatement stmt =
-                     conexao.prepareStatement(sqlServicos)) {
+                     prepararStatement(conexao, sqlServicos, false)) {
 
             stmt.setLong(1, os.getId());
 
@@ -268,7 +260,7 @@ public class OrdemServicoRepository
                         + "ORDER BY osi.id";
 
         try (PreparedStatement stmt =
-                     conexao.prepareStatement(sqlPecas)) {
+                     prepararStatement(conexao, sqlPecas, false)) {
 
             stmt.setLong(1, os.getId());
 
@@ -299,7 +291,7 @@ public class OrdemServicoRepository
                 && !os.getServicos().isEmpty()) {
 
             try (PreparedStatement stmt =
-                         conexao.prepareStatement(sqlServico)) {
+                         prepararStatement(conexao, sqlServico, false)) {
 
                 for (Servico servico : os.getServicos()) {
                     if (servico == null || servico.getId() == null) {
@@ -325,7 +317,7 @@ public class OrdemServicoRepository
                 && !os.getItensPeca().isEmpty()) {
 
             try (PreparedStatement stmt =
-                         conexao.prepareStatement(sqlItem)) {
+                         prepararStatement(conexao, sqlItem, false)) {
 
                 for (ItemPedido item : os.getItensPeca()) {
                     if (item == null
@@ -359,7 +351,7 @@ public class OrdemServicoRepository
                         + "WHERE ordem_servico_id = ?";
 
         try (PreparedStatement stmt =
-                     conexao.prepareStatement(sqlServicos)) {
+                     prepararStatement(conexao, sqlServicos, false)) {
 
             stmt.setLong(1, id);
             stmt.executeUpdate();
@@ -370,7 +362,7 @@ public class OrdemServicoRepository
                         + "WHERE ordem_servico_id = ?";
 
         try (PreparedStatement stmt =
-                     conexao.prepareStatement(sqlItens)) {
+                     prepararStatement(conexao, sqlItens, false)) {
 
             stmt.setLong(1, id);
             stmt.executeUpdate();
@@ -382,38 +374,37 @@ public class OrdemServicoRepository
             return 0;
         }
 
-        try (Connection conexao = ConexaoBanco.conectar()) {
-            conexao.setAutoCommit(false);
+        return executarComConexao(
+                "Erro ao excluir ordem de serviço no MySQL. "
+                        + "Verifique se existem pedidos de peças vinculados.",
+                conexao -> {
+                    conexao.setAutoCommit(false);
 
-            try {
-                limparRelacionamentos(conexao, id);
+                    try {
+                        limparRelacionamentos(conexao, id);
 
-                String sql = "DELETE FROM ordens_servico WHERE id = ?";
-                int removidos;
+                        String sql =
+                                "DELETE FROM ordens_servico WHERE id = ?";
+                        int removidos;
 
-                try (PreparedStatement stmt =
-                             conexao.prepareStatement(sql)) {
+                        try (PreparedStatement stmt =
+                                     prepararStatement(conexao, sql, false)) {
+                            stmt.setLong(1, id);
+                            removidos = stmt.executeUpdate();
+                        }
 
-                    stmt.setLong(1, id);
-                    removidos = stmt.executeUpdate();
+                        conexao.commit();
+                        return removidos;
+
+                    } catch (SQLException e) {
+                        rollback(conexao);
+                        throw e;
+                    } catch (RuntimeException e) {
+                        rollback(conexao);
+                        throw e;
+                    }
                 }
-
-                conexao.commit();
-                return removidos;
-
-            } catch (SQLException e) {
-                rollback(conexao);
-                throw e;
-            } catch (RuntimeException e) {
-                rollback(conexao);
-                throw e;
-            }
-
-        } catch (SQLException e) {
-            throw new IllegalStateException(
-                    "Erro ao excluir ordem de serviço no MySQL. "
-                            + "Verifique se existem pedidos de peças vinculados.", e);
-        }
+        );
     }
 
     private void validar(OrdemServico os, boolean exigirId) {

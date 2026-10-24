@@ -1,6 +1,7 @@
 package br.com.mecaniQA.api.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDateTime;
 
 public class ServicoDTO {
@@ -60,6 +61,7 @@ public class ServicoDTO {
     public void setCustoTabelado(Double custoTabelado){
         this.custoTabelado = custoTabelado;
     }
+    @JsonIgnore
     public LocalDateTime getDataCriacao() {
         return dataCriacao;
     }
@@ -68,6 +70,7 @@ public class ServicoDTO {
         this.dataCriacao = dataCriacao;
     }
 
+    @JsonIgnore
     public LocalDateTime getDataUltimaAtualizacao() {
         return dataUltimaAtualizacao;
     }
@@ -77,6 +80,7 @@ public class ServicoDTO {
         this.dataUltimaAtualizacao = dataUltimaAtualizacao;
     }
 
+    @JsonIgnore
     public Boolean getValido() {
         return valido;
     }

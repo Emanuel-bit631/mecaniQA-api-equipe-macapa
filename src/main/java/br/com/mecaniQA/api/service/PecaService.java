@@ -4,6 +4,7 @@ package br.com.mecaniQA.api.service;
 import br.com.mecaniQA.api.dto.PecaRequestDTO;
 import br.com.mecaniQA.api.dto.PecaResponseDTO;
 import br.com.mecaniQA.api.exception.DadosInvalidosException;
+import br.com.mecaniQA.api.exception.RecursoNaoEncontradoException;
 import br.com.mecaniQA.api.model.Peca;
 import br.com.mecaniQA.api.repository.PecaRepository;
 import org.springframework.stereotype.Service;
@@ -34,9 +35,12 @@ public class PecaService {
                 .toList();
     }
 
-    public Optional<PecaResponseDTO> buscarPorId(Long id) {
+    public PecaResponseDTO buscarPorId(Long id) {
         return pecaRepository.buscarPorId(id)
-                .map(this::paraResposta);
+                .map(this::paraResposta)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Peça não encontrada para o ID informado: " + id
+                ));
     }
 
     public PecaResponseDTO cadastrar(PecaRequestDTO dto) {
@@ -63,9 +67,7 @@ public class PecaService {
         return paraResposta(peca);
     }
 
-    public Optional<PecaResponseDTO> atualizar(
-            Long id, PecaRequestDTO dto) {
-
+    public PecaResponseDTO atualizar(Long id, PecaRequestDTO dto) {
         if (dto == null) {
             throw new DadosInvalidosException(
                     "Os dados da peça não foram informados."
@@ -75,15 +77,24 @@ public class PecaService {
         Peca peca = paraEntidade(dto);
 
         if (!pecaRepository.atualizar(id, peca)) {
-            return Optional.empty();
+            throw new RecursoNaoEncontradoException(
+                    "Peça não encontrada para o ID informado: " + id
+            );
         }
 
         return pecaRepository.buscarPorId(id)
-                .map(this::paraResposta);
+                .map(this::paraResposta)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Peça não encontrada para o ID informado: " + id
+                ));
     }
 
-    public boolean deletar(Long id) {
-        return pecaRepository.deletar(id);
+    public void deletar(Long id) {
+        if (!pecaRepository.deletar(id)) {
+            throw new RecursoNaoEncontradoException(
+                    "Peça não encontrada para o ID informado: " + id
+            );
+        }
     }
 
     private Peca paraEntidade(PecaRequestDTO dto) {

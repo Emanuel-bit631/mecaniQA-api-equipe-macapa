@@ -5,6 +5,7 @@ import br.com.mecaniQA.api.dto.PedidoPecaRequestDTO;
 import br.com.mecaniQA.api.dto.PedidoPecaResponseDTO;
 import br.com.mecaniQA.api.dto.PedidoPecaStatusDTO;
 import br.com.mecaniQA.api.exception.DadosInvalidosException;
+import br.com.mecaniQA.api.exception.RecursoNaoEncontradoException;
 import br.com.mecaniQA.api.model.StatusPedido;
 import br.com.mecaniQA.api.service.PedidoPecasService;
 import org.springframework.http.HttpStatus;
@@ -12,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/pedidos-pecas")
@@ -38,6 +38,10 @@ public class PedidoPecaController {
         } catch (DadosInvalidosException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
 
+        } catch (RecursoNaoEncontradoException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
+
         } catch (IllegalStateException e) {
             return ResponseEntity.status(
                             HttpStatus.INTERNAL_SERVER_ERROR)
@@ -50,17 +54,16 @@ public class PedidoPecaController {
             @PathVariable Long id,
             @RequestBody List<ItemPedidoDTO> novosItensDTO) {
         try {
-            Optional<PedidoPecaResponseDTO> atualizado =
-                    pedidoPecasService.adicionarItens(id, novosItensDTO);
-
-            if (atualizado.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            return ResponseEntity.ok(atualizado.get());
+            return ResponseEntity.ok(
+                    pedidoPecasService.adicionarItens(id, novosItensDTO)
+            );
 
         } catch (DadosInvalidosException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+
+        } catch (RecursoNaoEncontradoException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
 
         } catch (IllegalStateException e) {
             return ResponseEntity.status(
@@ -88,13 +91,10 @@ public class PedidoPecaController {
     public ResponseEntity<?> buscarPorId(
             @PathVariable Long id) {
         try {
-            Optional<PedidoPecaResponseDTO> pedido =
-                    pedidoPecasService.buscarPorId(id);
+            return ResponseEntity.ok(pedidoPecasService.buscarPorId(id));
 
-            return pedido
-                    .map(ResponseEntity::ok)
-                    .orElseGet(() ->
-                            ResponseEntity.notFound().build());
+        } catch (RecursoNaoEncontradoException e) {
+            return ResponseEntity.notFound().build();
 
         } catch (IllegalStateException e) {
             return ResponseEntity.status(
@@ -112,17 +112,16 @@ public class PedidoPecaController {
                     ? null
                     : statusDTO.getStatus();
 
-            Optional<PedidoPecaResponseDTO> atualizado =
-                    pedidoPecasService.atualizarStatus(id, status);
-
-            if (atualizado.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            return ResponseEntity.ok(atualizado.get());
+            return ResponseEntity.ok(
+                    pedidoPecasService.atualizarStatus(id, status)
+            );
 
         } catch (DadosInvalidosException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+
+        } catch (RecursoNaoEncontradoException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
 
         } catch (IllegalStateException e) {
             return ResponseEntity.status(
@@ -134,13 +133,11 @@ public class PedidoPecaController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deletar(@PathVariable Long id) {
         try {
-            boolean removido = pedidoPecasService.deletar(id);
-
-            if (!removido) {
-                return ResponseEntity.notFound().build();
-            }
-
+            pedidoPecasService.deletar(id);
             return ResponseEntity.noContent().build();
+
+        } catch (RecursoNaoEncontradoException e) {
+            return ResponseEntity.notFound().build();
 
         } catch (IllegalStateException e) {
             return ResponseEntity.status(

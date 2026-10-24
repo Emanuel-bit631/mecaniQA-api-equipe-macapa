@@ -4,6 +4,7 @@ import br.com.mecaniQA.api.dto.ItemPedidoDTO;
 import br.com.mecaniQA.api.dto.PedidoPecaRequestDTO;
 import br.com.mecaniQA.api.dto.PedidoPecaResponseDTO;
 import br.com.mecaniQA.api.exception.DadosInvalidosException;
+import br.com.mecaniQA.api.exception.RecursoNaoEncontradoException;
 import br.com.mecaniQA.api.mapper.PedidoPecaMapper;
 import br.com.mecaniQA.api.model.ItemPedido;
 import br.com.mecaniQA.api.model.Peca;
@@ -17,7 +18,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class PedidoPecasService {
@@ -38,9 +38,12 @@ public class PedidoPecasService {
                 .toList();
     }
 
-    public Optional<PedidoPecaResponseDTO> buscarPorId(Long id) {
+    public PedidoPecaResponseDTO buscarPorId(Long id) {
         return pedidoRepository.findById(id)
-                .map(PedidoPecaMapper::toDTO);
+                .map(PedidoPecaMapper::toDTO)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Pedido de peças não encontrado: " + id
+                ));
     }
 
     public PedidoPecaResponseDTO cadastrar(PedidoPecaRequestDTO dto) {
@@ -51,7 +54,7 @@ public class PedidoPecasService {
         }
 
         if (ordemServicoRepository.findById(dto.getOrdemServicoId()).isEmpty()) {
-            throw new DadosInvalidosException(
+            throw new RecursoNaoEncontradoException(
                     "Ordem de serviço não encontrada: "
                             + dto.getOrdemServicoId()
             );
@@ -68,16 +71,13 @@ public class PedidoPecasService {
         return PedidoPecaMapper.toDTO(pedidoRepository.save(pedido));
     }
 
-    public Optional<PedidoPecaResponseDTO> adicionarItens(
+    public PedidoPecaResponseDTO adicionarItens(
             Long id, List<ItemPedidoDTO> novosItensDTO) {
 
-        Optional<PedidoPecas> pedidoOpt = pedidoRepository.findById(id);
-
-        if (pedidoOpt.isEmpty()) {
-            return Optional.empty();
-        }
-
-        PedidoPecas pedido = pedidoOpt.get();
+        PedidoPecas pedido = pedidoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Pedido de peças não encontrado: " + id
+                ));
 
         if (pedido.getStatus() != StatusPedido.ORCANDO) {
             throw new DadosInvalidosException(
@@ -91,10 +91,10 @@ public class PedidoPecasService {
 
         PedidoPecas atualizado = pedidoRepository.update(pedido);
 
-        return Optional.of(PedidoPecaMapper.toDTO(atualizado));
+        return PedidoPecaMapper.toDTO(atualizado);
     }
 
-    public Optional<PedidoPecaResponseDTO> atualizarStatus(
+    public PedidoPecaResponseDTO atualizarStatus(
             Long id, StatusPedido status) {
 
         if (status == null) {
@@ -103,27 +103,26 @@ public class PedidoPecasService {
             );
         }
 
-        Optional<PedidoPecas> pedidoOpt = pedidoRepository.findById(id);
+        PedidoPecas pedido = pedidoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Pedido de peças não encontrado: " + id
+                ));
 
-        if (pedidoOpt.isEmpty()) {
-            return Optional.empty();
-        }
-
-        PedidoPecas pedido = pedidoOpt.get();
         pedido.setStatus(status);
 
         PedidoPecas atualizado = pedidoRepository.update(pedido);
 
-        return Optional.of(PedidoPecaMapper.toDTO(atualizado));
+        return PedidoPecaMapper.toDTO(atualizado);
     }
 
-    public boolean deletar(Long id) {
+    public void deletar(Long id) {
         if (!pedidoRepository.existsById(id)) {
-            return false;
+            throw new RecursoNaoEncontradoException(
+                    "Pedido de peças não encontrado: " + id
+            );
         }
 
         pedidoRepository.deleteById(id);
-        return true;
     }
 
     private List<ItemPedido> criarItens(List<ItemPedidoDTO> itensDTO) {
@@ -149,7 +148,7 @@ public class PedidoPecasService {
 
             Peca peca = pecaRepository.findById(itemDTO.getPecaId())
                     .orElseThrow(() ->
-                            new DadosInvalidosException(
+                            new RecursoNaoEncontradoException(
                                     "Peça não encontrada: "
                                             + itemDTO.getPecaId()
                             )

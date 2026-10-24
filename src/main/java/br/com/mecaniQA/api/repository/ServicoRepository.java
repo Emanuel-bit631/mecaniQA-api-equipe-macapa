@@ -1,22 +1,18 @@
 
 package br.com.mecaniQA.api.repository;
 
-import br.com.mecaniQA.api.config.ConexaoBanco;
 import br.com.mecaniQA.api.mapper.ServicoMapper;
 import br.com.mecaniQA.api.model.Servico;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class ServicoRepository implements Repository<Servico, Long> {
+public class ServicoRepository extends AbstractJdbcRepository<Servico, Long> {
 
     private static ServicoRepository instance;
 
@@ -31,10 +27,17 @@ public class ServicoRepository implements Repository<Servico, Long> {
     }
 
     @Override
+    protected RuntimeException criarExcecaoBanco(
+            String mensagem, SQLException causa) {
+        return new IllegalStateException(mensagem, causa);
+    }
+
+    @Override
     public Servico save(Servico servico) {
         if (servico == null || !servico.isValido()
                 || (servico.getId() != null && servico.getId() != 0)) {
-            throw new IllegalArgumentException("Dados inválidos para cadastrar serviço.");
+            throw new IllegalArgumentException(
+                    "Dados inválidos para cadastrar serviço.");
         }
 
         String sql = "INSERT INTO servicos "
@@ -43,32 +46,33 @@ public class ServicoRepository implements Repository<Servico, Long> {
 
         LocalDateTime agora = LocalDateTime.now();
 
-        try (Connection conexao = ConexaoBanco.conectar();
-             PreparedStatement stmt = conexao.prepareStatement(
-                     sql, Statement.RETURN_GENERATED_KEYS)) {
+        return executarSQL(
+                sql,
+                true,
+                "Erro ao cadastrar serviço no MySQL.",
+                stmt -> {
+                    stmt.setString(1, servico.getNome());
+                    stmt.setInt(2, servico.getTempoEstimadoMinutos());
+                    stmt.setDouble(3, servico.getCustoTabelado());
+                    stmt.setTimestamp(4, Timestamp.valueOf(agora));
+                    stmt.setTimestamp(5, Timestamp.valueOf(agora));
+                },
+                stmt -> {
+                    stmt.executeUpdate();
 
-            stmt.setString(1, servico.getNome());
-            stmt.setInt(2, servico.getTempoEstimadoMinutos());
-            stmt.setDouble(3, servico.getCustoTabelado());
-            stmt.setTimestamp(4, Timestamp.valueOf(agora));
-            stmt.setTimestamp(5, Timestamp.valueOf(agora));
+                    try (ResultSet chaves = stmt.getGeneratedKeys()) {
+                        if (!chaves.next()) {
+                            throw new SQLException(
+                                    "MySQL não retornou o ID do serviço.");
+                        }
+                        servico.setId(chaves.getLong(1));
+                    }
 
-            stmt.executeUpdate();
-
-            try (ResultSet chaves = stmt.getGeneratedKeys()) {
-                if (!chaves.next()) {
-                    throw new SQLException("MySQL não retornou o ID do serviço.");
+                    servico.setDataCriacao(agora);
+                    servico.setDataUltimaAtualizacao(agora);
+                    return servico;
                 }
-                servico.setId(chaves.getLong(1));
-            }
-
-            servico.setDataCriacao(agora);
-            servico.setDataUltimaAtualizacao(agora);
-            return servico;
-
-        } catch (SQLException e) {
-            throw new IllegalStateException("Erro ao cadastrar serviço no MySQL.", e);
-        }
+        );
     }
 
     @Override
@@ -79,77 +83,81 @@ public class ServicoRepository implements Repository<Servico, Long> {
 
         String sql = "SELECT * FROM servicos WHERE id = ?";
 
-        try (Connection conexao = ConexaoBanco.conectar();
-             PreparedStatement stmt = conexao.prepareStatement(sql)) {
-
-            stmt.setLong(1, id);
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(ServicoMapper.fromResultSet(rs));
+        return executarSQL(
+                sql,
+                false,
+                "Erro ao buscar serviço no MySQL.",
+                stmt -> stmt.setLong(1, id),
+                stmt -> {
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        if (rs.next()) {
+                            return Optional.of(ServicoMapper.fromResultSet(rs));
+                        }
+                        return Optional.empty();
+                    }
                 }
-                return Optional.empty();
-            }
-
-        } catch (SQLException e) {
-            throw new IllegalStateException("Erro ao buscar serviço no MySQL.", e);
-        }
+        );
     }
 
     @Override
     public List<Servico> findAll() {
-        List<Servico> servicos = new ArrayList<>();
         String sql = "SELECT * FROM servicos ORDER BY id";
 
-        try (Connection conexao = ConexaoBanco.conectar();
-             PreparedStatement stmt = conexao.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+        return executarSQL(
+                sql,
+                false,
+                "Erro ao listar serviços no MySQL.",
+                stmt -> { },
+                stmt -> {
+                    List<Servico> servicos = new ArrayList<>();
 
-            while (rs.next()) {
-                servicos.add(ServicoMapper.fromResultSet(rs));
-            }
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            servicos.add(ServicoMapper.fromResultSet(rs));
+                        }
+                    }
 
-            return servicos;
-
-        } catch (SQLException e) {
-            throw new IllegalStateException("Erro ao listar serviços no MySQL.", e);
-        }
+                    return servicos;
+                }
+        );
     }
 
     @Override
     public Servico update(Servico servico) {
         if (servico == null || servico.getId() == null
                 || !servico.isValido()) {
-            throw new IllegalArgumentException("Dados inválidos para atualizar serviço.");
+            throw new IllegalArgumentException(
+                    "Dados inválidos para atualizar serviço.");
         }
 
-        String sql = "UPDATE servicos SET nome = ?, tempo_estimado_minutos = ?, "
-                + "custo_tabelado = ?, data_ultima_atualizacao = ? WHERE id = ?";
+        String sql = "UPDATE servicos SET nome = ?, "
+                + "tempo_estimado_minutos = ?, custo_tabelado = ?, "
+                + "data_ultima_atualizacao = ? WHERE id = ?";
 
         LocalDateTime agora = LocalDateTime.now();
 
-        try (Connection conexao = ConexaoBanco.conectar();
-             PreparedStatement stmt = conexao.prepareStatement(sql)) {
+        return executarSQL(
+                sql,
+                false,
+                "Erro ao atualizar serviço no MySQL.",
+                stmt -> {
+                    stmt.setString(1, servico.getNome());
+                    stmt.setInt(2, servico.getTempoEstimadoMinutos());
+                    stmt.setDouble(3, servico.getCustoTabelado());
+                    stmt.setTimestamp(4, Timestamp.valueOf(agora));
+                    stmt.setLong(5, servico.getId());
+                },
+                stmt -> {
+                    if (stmt.executeUpdate() == 0
+                            && !existsById(servico.getId())) {
+                        throw new IllegalArgumentException(
+                                "Serviço não encontrado: " + servico.getId());
+                    }
 
-            stmt.setString(1, servico.getNome());
-            stmt.setInt(2, servico.getTempoEstimadoMinutos());
-            stmt.setDouble(3, servico.getCustoTabelado());
-            stmt.setTimestamp(4, Timestamp.valueOf(agora));
-            stmt.setLong(5, servico.getId());
-
-            int alterados = stmt.executeUpdate();
-
-            if (alterados == 0 && !existsById(servico.getId())) {
-                throw new IllegalArgumentException(
-                        "Serviço não encontrado: " + servico.getId());
-            }
-
-            servico.setDataUltimaAtualizacao(agora);
-            return servico;
-
-        } catch (SQLException e) {
-            throw new IllegalStateException("Erro ao atualizar serviço no MySQL.", e);
-        }
+                    servico.setDataUltimaAtualizacao(agora);
+                    return servico;
+                }
+        );
     }
 
     @Override
@@ -165,18 +173,17 @@ public class ServicoRepository implements Repository<Servico, Long> {
 
         String sql = "SELECT 1 FROM servicos WHERE id = ?";
 
-        try (Connection conexao = ConexaoBanco.conectar();
-             PreparedStatement stmt = conexao.prepareStatement(sql)) {
-
-            stmt.setLong(1, id);
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                return rs.next();
-            }
-
-        } catch (SQLException e) {
-            throw new IllegalStateException("Erro ao verificar serviço no MySQL.", e);
-        }
+        return executarSQL(
+                sql,
+                false,
+                "Erro ao verificar serviço no MySQL.",
+                stmt -> stmt.setLong(1, id),
+                stmt -> {
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        return rs.next();
+                    }
+                }
+        );
     }
 
     private int excluir(Long id) {
@@ -186,15 +193,13 @@ public class ServicoRepository implements Repository<Servico, Long> {
 
         String sql = "DELETE FROM servicos WHERE id = ?";
 
-        try (Connection conexao = ConexaoBanco.conectar();
-             PreparedStatement stmt = conexao.prepareStatement(sql)) {
-
-            stmt.setLong(1, id);
-            return stmt.executeUpdate();
-
-        } catch (SQLException e) {
-            throw new IllegalStateException("Erro ao excluir serviço no MySQL.", e);
-        }
+        return executarSQL(
+                sql,
+                false,
+                "Erro ao excluir serviço no MySQL.",
+                stmt -> stmt.setLong(1, id),
+                stmt -> stmt.executeUpdate()
+        );
     }
 
     // Métodos mantidos para compatibilidade com o código existente.

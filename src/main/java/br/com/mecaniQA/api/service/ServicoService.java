@@ -3,12 +3,12 @@ package br.com.mecaniQA.api.service;
 
 import br.com.mecaniQA.api.dto.ServicoDTO;
 import br.com.mecaniQA.api.exception.DadosInvalidosException;
+import br.com.mecaniQA.api.exception.RecursoNaoEncontradoException;
 import br.com.mecaniQA.api.model.Servico;
 import br.com.mecaniQA.api.repository.ServicoRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class ServicoService {
@@ -23,9 +23,12 @@ public class ServicoService {
                 .toList();
     }
 
-    public Optional<ServicoDTO> buscarPorId(Long id) {
+    public ServicoDTO buscarPorId(Long id) {
         return servicoRepository.findById(id)
-                .map(this::paraDTO);
+                .map(this::paraDTO)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Serviço não encontrado para o ID informado: " + id
+                ));
     }
 
     public ServicoDTO cadastrar(ServicoDTO dto) {
@@ -46,21 +49,17 @@ public class ServicoService {
         return paraDTO(servicoRepository.save(servico));
     }
 
-    public Optional<ServicoDTO> atualizar(Long id, ServicoDTO dto) {
+    public ServicoDTO atualizar(Long id, ServicoDTO dto) {
         if (dto == null) {
             throw new DadosInvalidosException(
                     "Os dados do serviço não foram informados."
             );
         }
 
-        Optional<Servico> existenteOpt =
-                servicoRepository.findById(id);
-
-        if (existenteOpt.isEmpty()) {
-            return Optional.empty();
-        }
-
-        Servico existente = existenteOpt.get();
+        Servico existente = servicoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Serviço não encontrado para o ID informado: " + id
+                ));
 
         if (dto.getNome() != null
                 && !dto.getNome().trim().isEmpty()) {
@@ -85,18 +84,17 @@ public class ServicoService {
             );
         }
 
-        return Optional.of(
-                paraDTO(servicoRepository.update(existente))
-        );
+        return paraDTO(servicoRepository.update(existente));
     }
 
-    public boolean deletar(Long id) {
+    public void deletar(Long id) {
         if (!servicoRepository.existsById(id)) {
-            return false;
+            throw new RecursoNaoEncontradoException(
+                    "Serviço não encontrado para o ID informado: " + id
+            );
         }
 
         servicoRepository.deleteById(id);
-        return true;
     }
 
     private Servico paraEntidade(ServicoDTO dto) {

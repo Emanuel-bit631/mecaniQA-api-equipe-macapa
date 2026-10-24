@@ -3,6 +3,7 @@ package br.com.mecaniQA.api.controller;
 import br.com.mecaniQA.api.dto.OrdemServicoRequestDTO;
 import br.com.mecaniQA.api.dto.OrdemServicoResponseDTO;
 import br.com.mecaniQA.api.exception.DadosInvalidosException;
+import br.com.mecaniQA.api.exception.RecursoNaoEncontradoException;
 import br.com.mecaniQA.api.model.StatusOrdemServico;
 import br.com.mecaniQA.api.service.OrdemServicoService;
 import org.springframework.http.HttpStatus;
@@ -10,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/ordens-servico")
@@ -35,6 +35,10 @@ public class OrdemServicoController {
 
         } catch (DadosInvalidosException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+
+        } catch (RecursoNaoEncontradoException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
 
         } catch (IllegalStateException e) {
             return ResponseEntity.status(
@@ -62,13 +66,10 @@ public class OrdemServicoController {
     public ResponseEntity<?> buscarPorId(
             @PathVariable Long id) {
         try {
-            Optional<OrdemServicoResponseDTO> ordem =
-                    ordemServicoService.buscarPorId(id);
+            return ResponseEntity.ok(ordemServicoService.buscarPorId(id));
 
-            return ordem
-                    .map(ResponseEntity::ok)
-                    .orElseGet(() ->
-                            ResponseEntity.notFound().build());
+        } catch (RecursoNaoEncontradoException e) {
+            return ResponseEntity.notFound().build();
 
         } catch (IllegalStateException e) {
             return ResponseEntity.status(
@@ -82,18 +83,16 @@ public class OrdemServicoController {
             @PathVariable Long id,
             @RequestBody OrdemServicoRequestDTO dto) {
         try {
-            Optional<OrdemServicoResponseDTO> atualizada =
-                    ordemServicoService.atualizar(id, dto);
-
-            if (atualizada.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("Ordem de serviço não encontrada: " + id);
-            }
-
-            return ResponseEntity.ok(atualizada.get());
+            return ResponseEntity.ok(
+                    ordemServicoService.atualizar(id, dto)
+            );
 
         } catch (DadosInvalidosException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+
+        } catch (RecursoNaoEncontradoException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
 
         } catch (IllegalStateException e) {
             return ResponseEntity.status(
@@ -108,18 +107,16 @@ public class OrdemServicoController {
             @RequestParam(required = false)
             StatusOrdemServico status) {
         try {
-            Optional<OrdemServicoResponseDTO> atualizada =
-                    ordemServicoService.atualizarStatus(id, status);
-
-            if (atualizada.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("Ordem de serviço não encontrada: " + id);
-            }
-
-            return ResponseEntity.ok(atualizada.get());
+            return ResponseEntity.ok(
+                    ordemServicoService.atualizarStatus(id, status)
+            );
 
         } catch (DadosInvalidosException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+
+        } catch (RecursoNaoEncontradoException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
 
         } catch (IllegalStateException e) {
             return ResponseEntity.status(
@@ -131,13 +128,11 @@ public class OrdemServicoController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deletar(@PathVariable Long id) {
         try {
-            boolean removida = ordemServicoService.deletar(id);
-
-            if (!removida) {
-                return ResponseEntity.notFound().build();
-            }
-
+            ordemServicoService.deletar(id);
             return ResponseEntity.noContent().build();
+
+        } catch (RecursoNaoEncontradoException e) {
+            return ResponseEntity.notFound().build();
 
         } catch (IllegalStateException e) {
             return ResponseEntity.status(

@@ -1,6 +1,5 @@
 package br.com.mecaniQA.api.repository;
 
-import br.com.mecaniQA.api.config.ConexaoBanco;
 import br.com.mecaniQA.api.mapper.PecaMapper;
 import br.com.mecaniQA.api.model.ItemPedido;
 import br.com.mecaniQA.api.model.Peca;
@@ -11,7 +10,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -20,7 +18,7 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 
 public class PedidoPecasRepository
-        implements Repository<PedidoPecas, Long> {
+        extends AbstractJdbcRepository<PedidoPecas, Long> {
 
     private static PedidoPecasRepository instance;
 
@@ -35,6 +33,12 @@ public class PedidoPecasRepository
     }
 
     @Override
+    protected RuntimeException criarExcecaoBanco(
+            String mensagem, SQLException causa) {
+        return new IllegalStateException(mensagem, causa);
+    }
+
+    @Override
     public PedidoPecas save(PedidoPecas pedido) {
         prepararDados(pedido);
         validar(pedido, false);
@@ -43,47 +47,42 @@ public class PedidoPecasRepository
                 + "(ordem_servico_id, data_pedido, status) "
                 + "VALUES (?, ?, ?)";
 
-        try (Connection conexao = ConexaoBanco.conectar()) {
-            conexao.setAutoCommit(false);
+        return executarComConexao(
+                "Erro ao cadastrar pedido de peças no MySQL.",
+                conexao -> {
+                    conexao.setAutoCommit(false);
 
-            try {
-                try (PreparedStatement stmt = conexao.prepareStatement(
-                        sql, Statement.RETURN_GENERATED_KEYS)) {
+                    try {
+                        try (PreparedStatement stmt =
+                                     prepararStatement(conexao, sql, true)) {
+                            stmt.setLong(1, pedido.getOrdemServicoId());
+                            stmt.setTimestamp(
+                                    2, Timestamp.valueOf(pedido.getDataPedido()));
+                            stmt.setString(3, pedido.getStatus().name());
+                            stmt.executeUpdate();
 
-                    stmt.setLong(1, pedido.getOrdemServicoId());
-                    stmt.setTimestamp(
-                            2, Timestamp.valueOf(pedido.getDataPedido()));
-                    stmt.setString(3, pedido.getStatus().name());
-
-                    stmt.executeUpdate();
-
-                    try (ResultSet chaves = stmt.getGeneratedKeys()) {
-                        if (!chaves.next()) {
-                            throw new SQLException(
-                                    "MySQL não retornou o ID do pedido de peças.");
+                            try (ResultSet chaves = stmt.getGeneratedKeys()) {
+                                if (!chaves.next()) {
+                                    throw new SQLException(
+                                            "MySQL não retornou o ID do pedido de peças.");
+                                }
+                                pedido.setId(chaves.getLong(1));
+                            }
                         }
 
-                        pedido.setId(chaves.getLong(1));
+                        salvarItens(conexao, pedido);
+                        conexao.commit();
+                        return pedido;
+
+                    } catch (SQLException e) {
+                        rollback(conexao);
+                        throw e;
+                    } catch (RuntimeException e) {
+                        rollback(conexao);
+                        throw e;
                     }
                 }
-
-                salvarItens(conexao, pedido);
-                conexao.commit();
-
-                return pedido;
-
-            } catch (SQLException e) {
-                rollback(conexao);
-                throw e;
-            } catch (RuntimeException e) {
-                rollback(conexao);
-                throw e;
-            }
-
-        } catch (SQLException e) {
-            throw new IllegalStateException(
-                    "Erro ao cadastrar pedido de peças no MySQL.", e);
-        }
+        );
     }
 
     @Override
@@ -94,55 +93,53 @@ public class PedidoPecasRepository
 
         String sql = "SELECT * FROM pedidos_pecas WHERE id = ?";
 
-        try (Connection conexao = ConexaoBanco.conectar();
-             PreparedStatement stmt = conexao.prepareStatement(sql)) {
+        return executarComConexao(
+                "Erro ao buscar pedido de peças no MySQL.",
+                conexao -> {
+                    PedidoPecas pedido;
 
-            stmt.setLong(1, id);
+                    try (PreparedStatement stmt =
+                                 prepararStatement(conexao, sql, false)) {
+                        stmt.setLong(1, id);
 
-            PedidoPecas pedido;
+                        try (ResultSet rs = stmt.executeQuery()) {
+                            if (!rs.next()) {
+                                return Optional.empty();
+                            }
+                            pedido = mapearPedido(rs);
+                        }
+                    }
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (!rs.next()) {
-                    return Optional.empty();
+                    carregarItens(conexao, pedido);
+                    return Optional.of(pedido);
                 }
-
-                pedido = mapearPedido(rs);
-            }
-
-            carregarItens(conexao, pedido);
-
-            return Optional.of(pedido);
-
-        } catch (SQLException e) {
-            throw new IllegalStateException(
-                    "Erro ao buscar pedido de peças no MySQL.", e);
-        }
+        );
     }
 
     @Override
     public List<PedidoPecas> findAll() {
-        List<PedidoPecas> pedidos = new ArrayList<>();
-
         String sql = "SELECT * FROM pedidos_pecas ORDER BY id";
 
-        try (Connection conexao = ConexaoBanco.conectar();
-             PreparedStatement stmt = conexao.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+        return executarComConexao(
+                "Erro ao listar pedidos de peças no MySQL.",
+                conexao -> {
+                    List<PedidoPecas> pedidos = new ArrayList<>();
 
-            while (rs.next()) {
-                pedidos.add(mapearPedido(rs));
-            }
+                    try (PreparedStatement stmt =
+                                 prepararStatement(conexao, sql, false);
+                         ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            pedidos.add(mapearPedido(rs));
+                        }
+                    }
 
-            for (PedidoPecas pedido : pedidos) {
-                carregarItens(conexao, pedido);
-            }
+                    for (PedidoPecas pedido : pedidos) {
+                        carregarItens(conexao, pedido);
+                    }
 
-            return pedidos;
-
-        } catch (SQLException e) {
-            throw new IllegalStateException(
-                    "Erro ao listar pedidos de peças no MySQL.", e);
-        }
+                    return pedidos;
+                }
+        );
     }
 
     @Override
@@ -154,46 +151,44 @@ public class PedidoPecasRepository
                 + "SET ordem_servico_id = ?, data_pedido = ?, status = ? "
                 + "WHERE id = ?";
 
-        try (Connection conexao = ConexaoBanco.conectar()) {
-            conexao.setAutoCommit(false);
+        return executarComConexao(
+                "Erro ao atualizar pedido de peças no MySQL.",
+                conexao -> {
+                    conexao.setAutoCommit(false);
 
-            try {
-                try (PreparedStatement stmt = conexao.prepareStatement(sql)) {
-                    stmt.setLong(1, pedido.getOrdemServicoId());
-                    stmt.setTimestamp(
-                            2, Timestamp.valueOf(pedido.getDataPedido()));
-                    stmt.setString(3, pedido.getStatus().name());
-                    stmt.setLong(4, pedido.getId());
+                    try {
+                        try (PreparedStatement stmt =
+                                     prepararStatement(conexao, sql, false)) {
+                            stmt.setLong(1, pedido.getOrdemServicoId());
+                            stmt.setTimestamp(
+                                    2, Timestamp.valueOf(pedido.getDataPedido()));
+                            stmt.setString(3, pedido.getStatus().name());
+                            stmt.setLong(4, pedido.getId());
 
-                    int alterados = stmt.executeUpdate();
+                            int alterados = stmt.executeUpdate();
 
-                    if (alterados == 0
-                            && !existePorId(conexao, pedido.getId())) {
-                        throw new NoSuchElementException(
-                                "Pedido de peças não encontrado: "
-                                        + pedido.getId());
+                            if (alterados == 0
+                                    && !existePorId(conexao, pedido.getId())) {
+                                throw new NoSuchElementException(
+                                        "Pedido de peças não encontrado: "
+                                                + pedido.getId());
+                            }
+                        }
+
+                        limparItens(conexao, pedido.getId());
+                        salvarItens(conexao, pedido);
+                        conexao.commit();
+                        return pedido;
+
+                    } catch (SQLException e) {
+                        rollback(conexao);
+                        throw e;
+                    } catch (RuntimeException e) {
+                        rollback(conexao);
+                        throw e;
                     }
                 }
-
-                limparItens(conexao, pedido.getId());
-                salvarItens(conexao, pedido);
-
-                conexao.commit();
-
-                return pedido;
-
-            } catch (SQLException e) {
-                rollback(conexao);
-                throw e;
-            } catch (RuntimeException e) {
-                rollback(conexao);
-                throw e;
-            }
-
-        } catch (SQLException e) {
-            throw new IllegalStateException(
-                    "Erro ao atualizar pedido de peças no MySQL.", e);
-        }
+        );
     }
 
     @Override
@@ -207,13 +202,10 @@ public class PedidoPecasRepository
             return false;
         }
 
-        try (Connection conexao = ConexaoBanco.conectar()) {
-            return existePorId(conexao, id);
-
-        } catch (SQLException e) {
-            throw new IllegalStateException(
-                    "Erro ao verificar pedido de peças no MySQL.", e);
-        }
+        return executarComConexao(
+                "Erro ao verificar pedido de peças no MySQL.",
+                conexao -> existePorId(conexao, id)
+        );
     }
 
     private PedidoPecas mapearPedido(ResultSet rs) throws SQLException {
@@ -245,7 +237,7 @@ public class PedidoPecasRepository
                 + "WHERE ppi.pedido_id = ? "
                 + "ORDER BY ppi.id";
 
-        try (PreparedStatement stmt = conexao.prepareStatement(sql)) {
+        try (PreparedStatement stmt = prepararStatement(conexao, sql, false)) {
             stmt.setLong(1, pedido.getId());
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -275,7 +267,7 @@ public class PedidoPecasRepository
                 + "(pedido_id, peca_id, quantidade, preco_unitario) "
                 + "VALUES (?, ?, ?, ?)";
 
-        try (PreparedStatement stmt = conexao.prepareStatement(sql)) {
+        try (PreparedStatement stmt = prepararStatement(conexao, sql, false)) {
             for (ItemPedido item : pedido.getItens()) {
                 if (item == null
                         || item.getPeca() == null
@@ -305,7 +297,7 @@ public class PedidoPecasRepository
 
         String sql = "DELETE FROM pedido_pecas_itens WHERE pedido_id = ?";
 
-        try (PreparedStatement stmt = conexao.prepareStatement(sql)) {
+        try (PreparedStatement stmt = prepararStatement(conexao, sql, false)) {
             stmt.setLong(1, pedidoId);
             stmt.executeUpdate();
         }
@@ -316,7 +308,7 @@ public class PedidoPecasRepository
 
         String sql = "SELECT 1 FROM pedidos_pecas WHERE id = ?";
 
-        try (PreparedStatement stmt = conexao.prepareStatement(sql)) {
+        try (PreparedStatement stmt = prepararStatement(conexao, sql, false)) {
             stmt.setLong(1, id);
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -330,37 +322,35 @@ public class PedidoPecasRepository
             return 0;
         }
 
-        try (Connection conexao = ConexaoBanco.conectar()) {
-            conexao.setAutoCommit(false);
+        return executarComConexao(
+                "Erro ao excluir pedido de peças no MySQL.",
+                conexao -> {
+                    conexao.setAutoCommit(false);
 
-            try {
-                limparItens(conexao, id);
+                    try {
+                        limparItens(conexao, id);
 
-                int removidos;
+                        String sql = "DELETE FROM pedidos_pecas WHERE id = ?";
+                        int removidos;
 
-                String sql = "DELETE FROM pedidos_pecas WHERE id = ?";
+                        try (PreparedStatement stmt =
+                                     prepararStatement(conexao, sql, false)) {
+                            stmt.setLong(1, id);
+                            removidos = stmt.executeUpdate();
+                        }
 
-                try (PreparedStatement stmt = conexao.prepareStatement(sql)) {
-                    stmt.setLong(1, id);
-                    removidos = stmt.executeUpdate();
+                        conexao.commit();
+                        return removidos;
+
+                    } catch (SQLException e) {
+                        rollback(conexao);
+                        throw e;
+                    } catch (RuntimeException e) {
+                        rollback(conexao);
+                        throw e;
+                    }
                 }
-
-                conexao.commit();
-
-                return removidos;
-
-            } catch (SQLException e) {
-                rollback(conexao);
-                throw e;
-            } catch (RuntimeException e) {
-                rollback(conexao);
-                throw e;
-            }
-
-        } catch (SQLException e) {
-            throw new IllegalStateException(
-                    "Erro ao excluir pedido de peças no MySQL.", e);
-        }
+        );
     }
 
     private void prepararDados(PedidoPecas pedido) {

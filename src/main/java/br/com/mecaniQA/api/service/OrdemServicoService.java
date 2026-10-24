@@ -4,6 +4,7 @@ import br.com.mecaniQA.api.dto.ItemPedidoDTO;
 import br.com.mecaniQA.api.dto.OrdemServicoRequestDTO;
 import br.com.mecaniQA.api.dto.OrdemServicoResponseDTO;
 import br.com.mecaniQA.api.exception.DadosInvalidosException;
+import br.com.mecaniQA.api.exception.RecursoNaoEncontradoException;
 import br.com.mecaniQA.api.mapper.OrdemServicoMapper;
 import br.com.mecaniQA.api.model.ItemPedido;
 import br.com.mecaniQA.api.model.OrdemServico;
@@ -17,7 +18,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class OrdemServicoService {
@@ -38,9 +38,12 @@ public class OrdemServicoService {
                 .toList();
     }
 
-    public Optional<OrdemServicoResponseDTO> buscarPorId(Long id) {
+    public OrdemServicoResponseDTO buscarPorId(Long id) {
         return ordemServicoRepository.findById(id)
-                .map(OrdemServicoMapper::toDTO);
+                .map(OrdemServicoMapper::toDTO)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Ordem de serviço não encontrada: " + id
+                ));
     }
 
     public OrdemServicoResponseDTO cadastrar(
@@ -53,15 +56,13 @@ public class OrdemServicoService {
         return OrdemServicoMapper.toDTO(salva);
     }
 
-    public Optional<OrdemServicoResponseDTO> atualizar(
+    public OrdemServicoResponseDTO atualizar(
             Long id, OrdemServicoRequestDTO dto) {
 
-        Optional<OrdemServico> existente =
-                ordemServicoRepository.findById(id);
-
-        if (existente.isEmpty()) {
-            return Optional.empty();
-        }
+        ordemServicoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Ordem de serviço não encontrada: " + id
+                ));
 
         OrdemServico atualizada = paraEntidade(dto);
         atualizada.setId(id);
@@ -69,10 +70,10 @@ public class OrdemServicoService {
         OrdemServico salva =
                 ordemServicoRepository.update(atualizada);
 
-        return Optional.of(OrdemServicoMapper.toDTO(salva));
+        return OrdemServicoMapper.toDTO(salva);
     }
 
-    public Optional<OrdemServicoResponseDTO> atualizarStatus(
+    public OrdemServicoResponseDTO atualizarStatus(
             Long id, StatusOrdemServico status) {
 
         if (status == null) {
@@ -81,30 +82,27 @@ public class OrdemServicoService {
             );
         }
 
-        Optional<OrdemServico> ordemOpt =
-                ordemServicoRepository.findById(id);
+        OrdemServico ordem = ordemServicoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Ordem de serviço não encontrada: " + id
+                ));
 
-        if (ordemOpt.isEmpty()) {
-            return Optional.empty();
-        }
-
-        OrdemServico ordem = ordemOpt.get();
         ordem.setStatus(status);
 
         OrdemServico atualizada =
                 ordemServicoRepository.update(ordem);
 
-        return Optional.of(OrdemServicoMapper.toDTO(atualizada));
+        return OrdemServicoMapper.toDTO(atualizada);
     }
 
-    public boolean deletar(Long id) {
+    public void deletar(Long id) {
         if (!ordemServicoRepository.existsById(id)) {
-            return false;
+            throw new RecursoNaoEncontradoException(
+                    "Ordem de serviço não encontrada: " + id
+            );
         }
 
         ordemServicoRepository.deleteById(id);
-
-        return true;
     }
 
     private OrdemServico paraEntidade(
@@ -141,10 +139,16 @@ public class OrdemServicoService {
         if (dto.getServicosIds() != null) {
             for (Long servicoId : dto.getServicosIds()) {
 
+                if (servicoId == null) {
+                    throw new DadosInvalidosException(
+                            "O ID do serviço é obrigatório."
+                    );
+                }
+
                 Servico servico = servicoRepository
                         .findById(servicoId)
                         .orElseThrow(() ->
-                                new DadosInvalidosException(
+                                new RecursoNaoEncontradoException(
                                         "Serviço não encontrado: "
                                                 + servicoId
                                 )
@@ -175,7 +179,7 @@ public class OrdemServicoService {
                 Peca peca = pecaRepository
                         .findById(itemDTO.getPecaId())
                         .orElseThrow(() ->
-                                new DadosInvalidosException(
+                                new RecursoNaoEncontradoException(
                                         "Peça não encontrada: "
                                                 + itemDTO.getPecaId()
                                 )
