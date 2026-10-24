@@ -39,7 +39,16 @@ public class PedidoPecaMapper {
             }
         }
 
-        return new PedidoPecas(null, LocalDateTime.now(), StatusPedido.ORCANDO, itens);
+        PedidoPecas pedido = new PedidoPecas(
+                null,
+                LocalDateTime.now(),
+                StatusPedido.ORCANDO,
+                itens
+        );
+
+        pedido.setOrdemServicoId(dto.getOrdemServicoId());
+
+        return pedido;
     }
 
     public static PedidoPecaResponseDTO toDTO(PedidoPecas entity) {
