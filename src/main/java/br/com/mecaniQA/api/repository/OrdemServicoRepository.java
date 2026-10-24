@@ -438,8 +438,6 @@ public class OrdemServicoRepository
         }
     }
 
-    // Métodos mantidos para compatibilidade com o código atual.
-
     public OrdemServico salvar(OrdemServico os) {
         if (os != null && os.getId() != null && os.getId() != 0) {
             return update(os);

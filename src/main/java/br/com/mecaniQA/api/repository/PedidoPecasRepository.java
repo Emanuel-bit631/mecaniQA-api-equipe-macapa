@@ -393,8 +393,6 @@ public class PedidoPecasRepository
         }
     }
 
-    // Métodos mantidos para compatibilidade com o Controller atual.
-
     public PedidoPecas salvar(PedidoPecas pedido) {
         if (pedido != null && pedido.getId() != null && pedido.getId() != 0) {
             return update(pedido);

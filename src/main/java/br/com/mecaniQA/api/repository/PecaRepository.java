@@ -216,8 +216,6 @@ public class PecaRepository extends AbstractJdbcRepository<Peca, Long> {
         );
     }
 
-    // Compatibilidade com os Controllers e Mappers atuais
-
     public List<Peca> getPecas() {
         return findAll();
     }
