@@ -26,8 +26,9 @@ public class Peca {
     public Peca() {
     }
 
-    public Peca(Long id, String codigoBarras, String fornecedorMarca, Integer quantidadeEstoque, Double precoCusto, Double precoVenda, LocalDateTime dataCadastro, LocalDateTime dataUltimaAtualizacao, CategoriaPeca categoria) {
+    public Peca(Long id, String nome, String codigoBarras, String fornecedorMarca, Integer quantidadeEstoque, Double precoCusto, Double precoVenda, LocalDateTime dataCadastro, LocalDateTime dataUltimaAtualizacao, CategoriaPeca categoria) {
         this.id = id;
+        this.nome = nome;
         this.codigoBarras = codigoBarras;
         this.fornecedorMarca = fornecedorMarca;
         this.quantidadeEstoque = quantidadeEstoque;
